@@ -34,7 +34,7 @@ class KaomojiPlugin(Star):
             sub_dict = self.kaomoji_data[category]
             if subcategory in sub_dict:
                 kaomoji = random.choice(sub_dict[subcategory])
-                return kaomoji
+                return str(Plain(kaomoji))
             else:
                 return f"（子类别 '{subcategory}' 不存在）"
         except KeyError:
