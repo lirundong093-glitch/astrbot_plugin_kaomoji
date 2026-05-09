@@ -1,24 +1,40 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
-from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
+import json
+import random
+import os
+from astrbot.api.plugin import Plugin, llm_func
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
-class MyPlugin(Star):
-    def __init__(self, context: Context):
+class KaomojiPlugin(Plugin):
+    def __init__(self, context):
         super().__init__(context)
+        # 读取同目录下的 kaomoji.json
+        json_path = os.path.join(os.path.dirname(__file__), "kaomoji.json")
+        with open(json_path, "r", encoding="utf-8") as f:
+            self.kaomoji_data = json.load(f)
 
-    async def initialize(self):
-        """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
+    @llm_func(name="get_kaomoji")
+    def get_kaomoji(self, category: str, subcategory: str) -> str:
+        """
+        从颜文字库中随机返回一个指定类别的颜文字。
+        当对话中需要表达情绪、动作、动物形象等时调用此函数。
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+        :param category: 主分类名，只能从以下列表中选择：
+            "正面情绪", "负面情绪", "中性情绪", "各种动作", "各种动物", "其他类型"
+        :param subcategory: 子分类名，每个主分类对应子分类如下：
+            - 正面情绪: "喜悦", "喜爱", "害羞", "同情"
+            - 负面情绪: "不悦", "愤怒", "悲伤", "疼痛", "恐惧"
+            - 中性情绪: "冷漠", "困惑", "怀疑", "惊喜"
+            - 各种动作: "打招呼", "拥抱", "眨眼", "道歉", "流鼻血", "藏起来", "写字", "奔跑", "睡觉"
+            - 各种动物: "猫", "熊", "狗", "兔子", "猪", "鸟", "鱼", "蜘蛛"
+            - 其他类型: "朋友", "敌人", "武器", "魔法", "食物", "音乐", "游戏"
+        """
+        try:
+            sub_dict = self.kaomoji_data[category]
+            if subcategory in sub_dict:
+                return random.choice(sub_dict[subcategory])
+            else:
+                return f"（子类别 '{subcategory}' 不存在）"
+        except KeyError:
+            return f"（主类别 '{category}' 不存在）"
 
-    async def terminate(self):
-        """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
+# 插件注册
+plugin = KaomojiPlugin()
